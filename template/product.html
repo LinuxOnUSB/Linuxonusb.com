@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{PAGE_TITLE}}</title>
+<meta name="description" content="{{DESCRIPTION}}">
+<meta name="theme-color" content="#335FFF">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+{{FB_SCRIPT}}
+<script src="assets/search.js" defer></script>
+{{CANONICAL}}
+{{HEAD_EXTRA}}
+<link rel="stylesheet" href="assets/product.css?v={{ASSET_V}}">
+</head>
+<body class="has-buy-bar">
+{{HEADER}}
+<main id="main" tabindex="-1" class="product product--wide">
+  {{BREADCRUMB}}
+  <div class="product-layout{{LAYOUT_CLASS}}">
+    <div class="product-media">
+      <!--GALLERY-->
+      <section class="gallery" id="gallery" aria-label="Product images">
+        <div class="gallery-stage">
+          <div class="main-image-wrap">
+            <button type="button" class="main-image-button" id="openViewer" aria-label="View full-size image">
+              <img id="mainImage" class="main-image" src="{{FIRST_IMAGE}}" alt="{{FIRST_ALT}}" width="500" height="500" fetchpriority="high" decoding="async">
+            </button>
+            <p class="image-error" id="imageError" hidden>This image could not be loaded.</p>
+          </div>
+          <button type="button" class="gallery-arrow gallery-arrow--prev" id="prevImage" aria-label="Previous image" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+          </button>
+          <button type="button" class="gallery-arrow gallery-arrow--next" id="nextImage" aria-label="Next image" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+          </button>
+          <span class="gallery-counter" id="galleryCounter" aria-hidden="true" hidden></span>
+        </div>
+        <div class="thumbnails" id="thumbnails" role="group" aria-label="Choose a product image" hidden></div>
+      </section>
+      <!--/GALLERY-->
+    </div>
+
+    <div class="product-buy">
+      <h1>{{TITLE}}</h1>
+      {{CONDITION_HTML}}
+      <p class="price" id="productPrice">{{PRICE}}</p>
+      <div id="variations"></div>
+      <a class="buy-button" id="buyButton" href="{{EBAY_URL}}" target="_blank" rel="noopener noreferrer">Buy on eBay</a>
+      <p class="buy-note">{{BUY_NOTE}}</p>
+      {{PAYMENTS}}
+      <ul class="trust">
+        <li>Checkout and payment on eBay</li>
+        <li>Prices in Australian dollars (AUD)</li>
+        <li>Delivery options and destinations are shown on the eBay listing</li>
+      </ul>
+      {{SELLER}}
+      <p class="visually-hidden" id="status" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+
+  {{SECTIONS}}
+  {{RELATED}}
+</main>
+{{FOOTER}}
+
+<div class="buy-bar">
+  <div><span class="buy-bar__label">Price</span><strong id="stickyPrice">{{PRICE}}</strong></div>
+  <a class="buy-button" id="stickyBuy" href="{{EBAY_URL}}" target="_blank" rel="noopener noreferrer">Buy on eBay</a>
+</div>
+
+<dialog class="lightbox" id="lightbox" aria-label="Full-size product image">
+  <img class="lightbox-image" id="lightboxImage" src="" alt="">
+  <button type="button" class="lightbox-close" id="closeViewer" aria-label="Close full-size image" autofocus>&times;</button>
+</dialog>
+
+<script type="application/json" id="product-data">{{DATA_JSON}}</script>
+<script src="assets/product.js?v={{ASSET_V}}" defer></script>
+</body>
+</html>
