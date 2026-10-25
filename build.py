@@ -5,7 +5,7 @@ Stops with a list of problems (and writes nothing) if any product is invalid."""
 import collections, hashlib, html, json, re, shutil, sys
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent))
 import urllib.parse
-import guides_extra, guides2, guides3, faq_data
+import guides_extra, guides2, guides3, guides_auto, faq_data
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -512,7 +512,11 @@ def guides(lk):
 
 _page_inner = page
 def page(*a, **k):
-    return _page_inner(*a, **k).replace("</head>", '<link rel="preconnect" href="https://wsrv.nl">' + FB_SCRIPT + "</head>", 1)
+    h = _page_inner(*a, **k).replace("</head>", '<link rel="preconnect" href="https://wsrv.nl">' + FB_SCRIPT + "</head>", 1)
+    if len(a) > 3 and a[3] == "404.html":
+        # served for any missing URL (e.g. /d/d): root-relative base keeps CSS, JS, icons and links working at any depth
+        h = h.replace('<meta charset="UTF-8">', '<meta charset="UTF-8">\n<base href="/">', 1).replace('<meta name="robots" content="index,follow,max-image-preview:large">\n', "", 1)
+    return h
 
 def main():
     catalog = json.loads((ROOT / "catalog" / "products.json").read_text(encoding="utf-8"))
@@ -575,6 +579,10 @@ def main():
     def lk(item, text):
         p = by_item.get(item); return f'<a href="{esc(p["id"])}.html">{esc(text)}</a>' if p else esc(text)
     g = guides(lk) + guides_extra.more(lk) + guides2.more(lk) + guides3.more(lk)
+    def plink(prefix, text):
+        p = next((q for q in products if q["id"].startswith(prefix)), None)
+        return f'<a href="{esc(p["id"])}.html">{esc(text)}</a>' if p else esc(text)
+    g = g + guides_auto.more(plink, {x[0] for x in g})
     brand_links = '<h2>Boot instructions by brand</h2><ul>' + "".join(f'<li><a href="boot-from-usb-{b_[0]}.html">How to boot from USB on {esc(b_[1])}</a></li>' for b_ in BRANDS) + '</ul>'
     g = [(a_, b_, c_, d_ + brand_links) if a_ == "boot-menu-keys-by-brand" else (a_, b_, c_, d_) for a_, b_, c_, d_ in g]
     for n_, (gslug, gtitle, gdesc, gbody) in enumerate(g):
