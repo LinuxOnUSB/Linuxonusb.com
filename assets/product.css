@@ -373,3 +373,23 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .gm-pad .gm-btn { flex: 1 1 90px; touch-action: manipulation; user-select: none; }
 .gm-cta { margin-top: 24px; }
 @media (min-width: 900px) { .gm-host { padding: 24px; } .gm-prompt { font-size: 26px; } }
+
+/* ---- Games v2 ---- */
+.site-nav a.nav-games { background: #FF6200; color: #111; font-weight: 700; border-radius: 999px; padding: 4px 14px; }
+.gm-cards { margin: 8px 0 20px; } .gm-link { display: flex; flex-direction: column; gap: 6px; text-decoration: none; }
+.gm-ico { font-size: 34px; line-height: 1; } .gm-play { margin-top: auto; color: #335FFF; font-weight: 700; }
+.gm-tools { display: flex; justify-content: flex-end; margin: -4px 0 6px; }
+.gm-mini { font: inherit; font-size: 13px; padding: 4px 12px; min-height: 32px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--muted); cursor: pointer; }
+.gm-mini[aria-pressed="true"] { border-color: #335FFF; color: #335FFF; }
+.gm-seg { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; } .gm-seglabel { font-size: 14px; color: var(--muted); }
+.gm-chip { font: inherit; font-size: 14px; padding: 6px 14px; min-height: 36px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--text); cursor: pointer; }
+.gm-chip[aria-pressed="true"] { background: #335FFF; border-color: #335FFF; color: #fff; }
+.gm-prog { height: 8px; border-radius: 99px; background: #e6ebff; margin-bottom: 12px; overflow: hidden; } .gm-prog i { display: block; height: 100%; width: 100%; background: #FF6200; transition: width 1s linear; }
+.gm-res { margin-top: 12px; } .gm-rank { margin: 0; font-size: 22px; font-weight: 800; color: #335FFF; }
+.gm-quiz { min-height: 220px; } .gm-q { font-size: 19px; font-weight: 700; margin: 0 0 12px; }
+.gm-opt { display: block; width: 100%; text-align: left; font: inherit; padding: 14px; margin-bottom: 8px; min-height: 48px; border: 2px solid var(--border); border-radius: 12px; background: #fff; color: var(--text); cursor: pointer; }
+.gm-opt:hover { border-color: #335FFF; } .gm-opt.right { border-color: #335FFF; background: #eaf0ff; } .gm-opt.wrong { border-color: #726C00; background: #f7f6e6; }
+.gm-why { margin: 8px 0 12px; color: var(--muted); }
+.gm-dpad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 auto 10px; max-width: 480px; } .gm-d { padding: 0; min-height: 52px; touch-action: manipulation; }
+.gm-btn { margin-top: 4px; }
+@media (min-width: 900px) { .gm-dpad { display: none; } }
