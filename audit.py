@@ -41,7 +41,7 @@ for t,v in titles.items():
     if len(v)>1: issues["dup title"].append(f"{t[:60]} x{len(v)}: {v[:3]}")
 for t,v in descs.items():
     if len(v)>1 and t: issues["dup desc"].append(f"{t[:50]} x{len(v)}")
-sm=open(D+"sitemap.xml").read(); 
+sm="".join(open(x,encoding="utf-8").read() for x in glob.glob(D+"sitemap-*.xml")) or open(D+"sitemap.xml").read()
 for u in re.findall(r"<loc>https://linuxonusb.com/?(.*?)</loc>",sm):
     if u and u not in names: issues["sitemap 404"].append(u)
 for f in names:

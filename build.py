@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
 PREFIX = {"AUD": "AU $"}
-TODAY, TODAY_HUMAN = "2026-10-19", "19 October 2026"
+TODAY, TODAY_HUMAN = "2026-10-26", "26 October 2026"
 errors = []
 ASSET_V = ""  # changes whenever the CSS or JS changes, so browsers never keep stale copies
 
@@ -171,13 +171,32 @@ def header():
             '<form class="site-search" action="shop.html" role="search"><input name="q" type="search" placeholder="Search all products" aria-label="Search all products"><button type="submit">Search</button></form></div>'
             f'<nav class="site-nav" aria-label="Main"><a href="shop.html">All products</a>{nav}<a href="guides.html">Guides</a><a href="faq.html">FAQ</a></nav></header>')
 
+GUIDE_JS = """(function(){var q=document.getElementById("gq"),li=[].slice.call(document.querySelectorAll("#glist li")),ch=[].slice.call(document.querySelectorAll(".gchip")),c=document.getElementById("gcount"),no=document.getElementById("gnone"),f="all";
+function run(){var w=q.value.toLowerCase().split(/\\s+/).filter(Boolean),n=0;li.forEach(function(x){var ok=(f==="all"||x.getAttribute("data-k")===f)&&w.every(function(t){return x.getAttribute("data-s").indexOf(t)>-1});x.hidden=!ok;if(ok)n++});c.textContent=n+" of "+li.length+" guides";no.hidden=n>0}
+q.addEventListener("input",run);
+ch.forEach(function(b){b.addEventListener("click",function(){f=b.getAttribute("data-f");ch.forEach(function(o){o.setAttribute("aria-pressed",o===b?"true":"false")});run()})});
+var p=new URLSearchParams(location.search).get("q");if(p){q.value=p}run()})();"""
+
+def faq_from_html(body):
+    qa = re.findall(r'<h3 class="faq-q">(.*?)</h3><p class="faq-a">(.*?)</p>', body, re.S)
+    if not qa: return ""
+    plain = lambda s: html.unescape(re.sub(r"<[^>]+>", "", s))
+    return jsonld({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": plain(q), "acceptedAnswer": {"@type": "Answer", "text": plain(a)}} for q, a in qa]})
+
 def footer():
     cats = "".join(f'<li><a href="category-{s}.html">{esc(n)}</a></li>' for s, n, _, _ in CATS if s in ("linux", "tools", "apps", "sandisk", "installers", "bundles"))
-    gl = "".join(f'<li><a href="guide-{s}.html">{t}</a></li>' for s, t in [("how-to-boot-from-usb", "How to boot from USB"), ("how-to-install-linux-from-usb", "Install Linux from USB"), ("best-linux-for-beginners", "Best Linux for beginners"), ("boot-menu-keys-by-brand", "Boot menu keys")])
-    return ('<footer class="site-footer"><nav class="site-footer__cols" aria-label="Footer"><div><strong>Shop</strong><ul>' + cats + '</ul></div><div><strong>Guides</strong><ul>' + gl + '<li><a href="guides.html">All guides</a></li><li><a href="faq.html">Help &amp; FAQ</a></li><li><a href="shop-by-system.html">Shop by system</a></li></ul></div>'
+    def ul(rows): return "".join(f'<li><a href="guide-{s}.html">{t}</a></li>' for s, t in rows)
+    gl = ul([("how-to-boot-from-usb", "How to boot from USB"), ("how-to-install-linux-from-usb", "Install Linux from USB"), ("best-linux-for-beginners", "Best Linux for beginners"), ("boot-menu-keys-by-brand", "Boot menu keys")]) + '<li><a href="guides.html">All guides</a></li>'
+    learn = ul([("what-is-ubuntu", "What is Ubuntu?"), ("what-is-linux-mint", "What is Linux Mint?"), ("what-is-debian", "What is Debian?"), ("what-is-fedora", "What is Fedora?"), ("ubuntu-vs-linux-mint", "Ubuntu vs Linux Mint"), ("how-to-use-ventoy-multiboot-usb", "Multiboot with Ventoy")])
+    year = str(__import__('datetime').date.today().year)
+    return ('<footer class="site-footer"><nav class="site-footer__cols" aria-label="Footer">'
+            '<div><strong>Shop</strong><ul>' + cats + '<li><a href="shop.html">All products</a></li><li><a href="shop-by-system.html">Shop by system</a></li></ul></div>'
+            '<div><strong>Guides</strong><ul>' + gl + '</ul></div>'
+            '<div><strong>Popular reads</strong><ul>' + learn + '</ul></div>'
             '<div><strong>Linuxonusb.com</strong><p>Bootable USB drives, SD cards and software installers, sold on eBay. You complete every purchase on eBay.</p>'
-            f'<p><a href="index.html">Home</a> &middot; <a href="shop.html">All products</a> &middot; <a href="{STORE}" target="_blank" rel="noopener noreferrer">Our eBay store</a></p><p>Machine translation is provided by Google Translate through the language menu at the top of the page.</p></div></nav>'
-            ''+ '<div class="footer-pay">' + pay_html() + '</div><p class="copy">&copy; ' + str(__import__('datetime').date.today().year) + ' Linuxonusb.com. All trademarks belong to their owners. Payments, delivery and returns are provided by eBay.</p>' + '<script>(function(){var l=document.getElementById("lang");if(l)l.addEventListener("change",function(){if(l.value)location.href="https://translate.google.com/translate?sl=en&tl="+l.value+"&u="+encodeURIComponent(location.href.split("#")[0])})})();</script></footer>')
+            f'<p><a href="index.html">Home</a> &middot; <a href="faq.html">Help &amp; FAQ</a> &middot; <a href="{STORE}" target="_blank" rel="noopener noreferrer">Our eBay store</a></p><p>Machine translation is provided by Google Translate through the language menu at the top of the page.</p></div></nav>'
+            '<div class="site-footer__base"><div class="footer-pay">' + pay_html() + '</div><p class="copy">&copy; ' + year + ' Linuxonusb.com. All trademarks belong to their owners. Payments, delivery and returns are provided by eBay.</p></div>'
+            '<script>(function(){var l=document.getElementById("lang");if(l)l.addEventListener("change",function(){if(l.value)location.href="https://translate.google.com/translate?sl=en&tl="+l.value+"&u="+encodeURIComponent(location.href.split("#")[0])})})();</script></footer>')
 
 def page(site, title, desc, name, body, extra="", og_image="", main_class="product prose", og_type="website", body_class=""):
     og_image = absimg(og_image)
@@ -197,7 +216,7 @@ def page(site, title, desc, name, body, extra="", og_image="", main_class="produ
     return (f'<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f'<title>{esc(title)}</title>\n<meta name="description" content="{esc(desc)}">\n<meta name="robots" content="index,follow,max-image-preview:large">\n<meta name="theme-color" content="#335FFF">\n'
             '<link rel="icon" href="favicon.ico" sizes="any">\n<link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png">\n<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">\n<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">\n<link rel="manifest" href="site.webmanifest">\n<meta name="author" content="Linuxonusb.com">\n<meta property="og:locale" content="en_AU">\n<script src="assets/search.js" defer></script>\n'
-            + (f'<link rel="canonical" href="{esc(url)}">\n' if url else "") + og + extra
+            + (f'<link rel="canonical" href="{esc(url)}">\n' if url else "") + (f'<link rel="alternate" hreflang="en-AU" href="{esc(url)}">\n<link rel="alternate" hreflang="x-default" href="{esc(url)}">\n' if url and name != "404.html" else "") + og + extra
             + f'\n<link rel="stylesheet" href="assets/product.css?v={ASSET_V}">\n</head>\n<body{(" class=" + chr(34) + body_class + chr(34)) if body_class else ""}>\n{header()}\n<main id="main" tabindex="-1" class="{main_class}">\n{body}\n</main>\n{footer()}\n</body>\n</html>\n')
 
 def crumb_ld(site, items):
@@ -591,13 +610,15 @@ def main():
         rel = '<h2>More guides</h2><ul>' + "".join(f'<li><a href="guide-{s_}.html">{esc(t_)}</a></li>' for s_, t_, _, _ in others) + '</ul><p><a class="btn" href="category-linux.html">Browse Linux USB drives</a> <a class="btn btn--ghost" href="shop.html">See all products</a></p>'
         body = f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; <a href="guides.html">Guides</a> &rsaquo; {esc(trim(gtitle, 50))}</nav><article><h1>{esc(gtitle)}</h1><p class="meta">Updated {TODAY_HUMAN}</p>{gbody}{rel}</article>'
         art = jsonld({"@context": "https://schema.org", "@type": "Article", "headline": trim(gtitle, 110), "description": gdesc, "inLanguage": "en", "datePublished": TODAY, "dateModified": TODAY,
-                      "author": {"@type": "Organization", "name": site["name"]}, "publisher": {"@type": "Organization", "name": site["name"]}, "mainEntityOfPage": f"{base}/{fn}"}) + crumb_ld(site, [("Home", ""), ("Guides", "guides.html"), (gtitle, fn)])
+                      "author": {"@type": "Organization", "name": site["name"]}, "publisher": {"@type": "Organization", "name": site["name"]}, "mainEntityOfPage": f"{base}/{fn}"}) + crumb_ld(site, [("Home", ""), ("Guides", "guides.html"), (gtitle, fn)]) + faq_from_html(gbody)
         (DIST / fn).write_text(page(site, trim(f"{gtitle} | {site['name']}", 70), gdesc, fn, body, art, main_class="product prose article", og_type="article"), encoding="utf-8")
         names.append(fn)
-    gl = "".join(f'<li><a class="card" href="guide-{s_}.html"><strong>{esc(t_)}</strong><span>{esc(d_)}</span></a></li>' for s_, t_, d_, _ in g)
+    gl = "".join(f'<li data-k="{guides_auto.KIND.get(s_, "basics")}" data-s="{esc((t_ + " " + d_ + " " + t_.replace("-", "") + " " + s_.replace("-", " ")).lower())}"><a class="card" href="guide-{s_}.html"><strong>{esc(t_)}</strong><span>{esc(d_)}</span></a></li>' for s_, t_, d_, _ in g)
+    chips = "".join(f'<button type="button" class="gchip" data-f="{k_}" aria-pressed="{"true" if k_ == "all" else "false"}">{l_}</button>' for k_, l_ in [("all", "All"), ("basics", "Basics and how-to"), ("distros", "Distro profiles"), ("install", "Install guides"), ("compare", "Comparisons"), ("best", "Best-of lists"), ("commands", "Commands"), ("concepts", "Concepts")])
+    guide_ui = (f'<div class="gsearch" role="search"><label for="gq" class="visually-hidden">Search guides</label><input id="gq" type="search" placeholder="Search {len(g)} guides: Ubuntu, boot menu, Wi-Fi, dd, dual boot" autocomplete="off" enterkeyhint="search"><p id="gcount" class="gcount" aria-live="polite">{len(g)} guides</p><div class="gchips" role="group" aria-label="Filter guides">{chips}</div></div>')
     gl_home = "".join(f'<li><a class="card" href="guide-{s_}.html"><strong>{esc(t_)}</strong><span>{esc(trim(d_, 110))}</span></a></li>' for s_, t_, d_, _ in g[4:10])
     gjson = jsonld({"@context": "https://schema.org", "@type": "CollectionPage", "name": "Guides: bootable USB drives and Linux", "url": f"{base}/guides.html", "mainEntity": {"@type": "ItemList", "itemListElement": [{"@type": "ListItem", "position": i + 1, "url": f"{base}/guide-{x[0]}.html", "name": x[1]} for i, x in enumerate(g)]}}) + crumb_ld(site, [("Home", ""), ("Guides", "guides.html")])
-    (DIST / "guides.html").write_text(page(site, f"Linux and Bootable USB Guides | {site['name']}", f"{len(g)} plain-English guides: boot from USB, install Linux, dual boot, choose a distribution, boot menu keys, Clonezilla and more.", "guides.html", f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; Guides</nav><h1>Linux and bootable USB guides</h1><p>Plain-English help for trying, installing and fixing computers with a bootable USB drive.</p><ul class="card-grid">{gl}</ul>', gjson), encoding="utf-8")
+    (DIST / "guides.html").write_text(page(site, f"Linux and Bootable USB Guides | {site['name']}", f"{len(g)} plain-English guides: boot from USB, install Linux, dual boot, choose a distribution, boot menu keys, Clonezilla and more.", "guides.html", f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; Guides</nav><h1>Linux and bootable USB guides</h1><p>Plain-English help for trying, installing and fixing computers with a bootable USB drive.</p>{guide_ui}<ul class="card-grid" id="glist">{gl}</ul><p id="gnone" class="gnone" hidden>No guides match. Try fewer words or choose All.</p><script>{GUIDE_JS}</script>', gjson), encoding="utf-8")
     names.append("guides.html")
     # boot-menu pages per brand
     for slug_, bname, bkey, skey, note in BRANDS:
@@ -653,7 +674,7 @@ def main():
             except Exception: pass
         pidx.append(e)
     cidx = [{"u": f"category-{c[0]}.html", "t": c[1], "k": SYN.get(c[0], "")} for c in CATS if by_cat.get(c[0])] + [{"u": f_, "t": f"{n_} USB drives", "k": n_.lower()} for f_, n_, _ in hub_pages] + [{"u": "guides.html", "t": "Guides and how-tos", "k": "guide help how boot install"}]
-    (DIST / "assets" / "search.json").write_text(json.dumps({"p": pidx, "c": cidx}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    (DIST / "assets" / "search.json").write_text(json.dumps({"p": pidx, "c": cidx, "g": [{"u": f"guide-{x[0]}.html", "t": x[1]} for x in g]}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print("hubs", len(hub_pages), "boot pages", len(BRANDS), "price fn", pf.__name__ if pf else None)
     # home page
     circ = "".join(f'<li><a href="category-{s_}.html">' + (f'<img src="{esc(thumb(by_id[by_cat[s_][0]]["images"][0]["src"], 192))}" alt="" width="96" height="96" loading="lazy">' if by_id[by_cat[s_][0]]["images"] else '<span class="circ-ph"></span>') + f'<span>{esc(n_)}</span></a></li>' for s_, n_, _, _ in sorted(CATS, key=lambda c: DISPLAY.index(c[0])) if by_cat[s_])
@@ -747,7 +768,10 @@ def main():
         return f"<url><loc>{esc(loc)}</loc><lastmod>{TODAY}</lastmod>" + "".join(f"<image:image><image:loc>{esc(absimg(i['src']))}</image:loc></image:image>" for i in imgs[:4]) + "</url>"
     urls = pages_ + [f"{p['id']}.html" for p in products]
     if base:
-        (DIST / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' + "\n".join([sm(u) for u in pages_] + [sm(f"{p['id']}.html", p["images"]) for p in products]) + "\n</urlset>\n", encoding="utf-8")
+        hdr = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n'
+        parts = {"sitemap-pages.xml": [sm(u) for u in pages_ if not u.startswith("guide-")], "sitemap-guides.xml": [sm(u) for u in pages_ if u.startswith("guide-")], "sitemap-products.xml": [sm(f"{p['id']}.html", p["images"]) for p in products]}
+        for fn_, rows_ in parts.items(): (DIST / fn_).write_text(hdr + "\n".join(rows_) + "\n</urlset>\n", encoding="utf-8")
+        (DIST / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "".join(f"<sitemap><loc>{base}/{fn_}</loc><lastmod>{TODAY}</lastmod></sitemap>\n" for fn_ in parts) + "</sitemapindex>\n", encoding="utf-8")
         (DIST / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
     if site.get("domain"): (DIST / "CNAME").write_text(site["domain"] + "\n", encoding="utf-8")
     (DIST / "404.html").write_text(page(site, f"Page not found | {site['name']}", "This page could not be found. Browse all products, read our guides or return to the Linuxonusb.com home page.", "404.html", '<h1>Page not found</h1><p>That page does not exist. <a href="index.html">Go to the home page</a>, browse <a href="shop.html">all products</a> or read our <a href="guides.html">guides</a>.</p>', '<meta name="robots" content="noindex">'), encoding="utf-8")

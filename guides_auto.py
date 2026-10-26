@@ -264,32 +264,88 @@ def plink_(prefix, text):
     return _plink(prefix, text)
 _plink = lambda p, t: e(t)
 
+
+KIND = {}
+PK = [("pkg_add", "pkg_info -Q", "doas pkg_add"), ("slackpkg", "slackpkg search", "slackpkg install"), ("apt", "apt search", "sudo apt install"), ("dnf", "dnf search", "sudo dnf install"), ("pacman", "pacman -Ss", "sudo pacman -S"), ("zypper", "zypper search", "sudo zypper install"), ("xbps", "xbps-query -Rs", "sudo xbps-install"), ("apk", "apk search", "apk add"), ("eopkg", "eopkg search", "sudo eopkg install"), ("Portage", "emerge --search", "sudo emerge --ask"), ("pkg", "pkg search", "pkg install")]
+NOPK = {"qubes", "vanilla-os", "puppy", "tiny-core", "porteus"}
+def pk(d):
+    if d["slug"] in NOPK: return None
+    for key, se, ins in PK:
+        if d["pkg"].startswith(key): return se, ins
+    return None
+
+def faq(items):
+    return ('<section class="faq"><h2>Frequently asked questions</h2>' + "".join(f'<div class="faq-item"><h3 class="faq-q">{e(q)}</h3><p class="faq-a">{a}</p></div>' for q, a in items) + "</section>")
+
+def pkgblock(d):
+    c = pk(d)
+    if not c: return ""
+    note = " Run the install command as root on this system." if d["slug"] in ("freebsd", "slackware", "alpine") else ""
+    return (f"<h2>Installing software on {e(d['name'])}</h2><p>{e(d['name'])} uses {e(d['pkg'])}. These commands search for a program and install it (replace <code>name</code> with the program):</p>"
+            f"<pre>{e(c[0])} name\n{e(c[1])} name</pre><p>Most desktop systems also have a graphical software store. See <a href=\"guide-how-to-install-software-on-linux.html\">how to install software on Linux</a>.{note}</p>")
+
+def profile_faq(d):
+    n = d["name"]
+    easy = (f"Yes. {e(n)} is one of the more beginner-friendly choices." if "beginner" in d["tags"] else f"It can be used by beginners, but {e(n)} is aimed more at {e(d['aud'])}. If you are brand new, a beginner-friendly distribution such as Linux Mint or Ubuntu is usually an easier first step.")
+    return faq([(f"Is {n} good for beginners?", easy), (f"What desktop does {n} use?", f"{e(n)} uses {e(d['desk'])}. To learn how desktops differ, read <a href=\"guide-what-is-gnome-kde-xfce-cinnamon.html\">what GNOME, KDE, Xfce and Cinnamon are</a>."),
+                (f"How much RAM does {n} need?", e(ram_note(d))), (f"Is {n} based on another distribution?", f"{e(n)} is {e(basep(d))}."),
+                (f"How often is {n} updated?", f"{e(n)} follows {e(REL[d['rel']])}."), (f"How can I try {n} without installing it?", "Write it to a USB drive, restart, choose the drive from the boot menu and pick the live or try option. Nothing on your internal disk changes unless you choose to install.")])
+
+def install_faq(d):
+    n = d["name"]; u = d["upd"]
+    upd = (f"Run <code>{e(u)}</code> in a terminal, or use the graphical update tool." if not u.startswith(("none", "the ")) else f"Use {e(u)}.")
+    return faq([("How long does the installation take?", "Most installs take 20 to 40 minutes, plus time to start from the USB drive and apply updates afterwards. Older computers and USB 2.0 drives take longer."),
+                (f"Will installing {n} delete my files?", "It depends on the option you choose. The erase-disk option removes everything on that disk. Installing alongside another system keeps it, but you should still back up first."),
+                ("What size USB drive do I need?", "A drive of 8 GB or more is enough for most distributions, and 16 GB gives room for extras. See <a href=\"guide-how-to-pick-the-right-usb-drive-size.html\">how to pick the right USB drive size</a>."),
+                ("Do I need to turn off Secure Boot?", "Many mainstream distributions start with Secure Boot on, but not all do. If the USB drive is ignored or you see a security error, turn Secure Boot off temporarily in your firmware settings."),
+                (f"How do I update {n} afterwards?", upd)])
+
+def compare_extra(A, B):
+    a, b = pk(A), pk(B); blk = ""
+    if a and b and A["pkg"] != B["pkg"]:
+        blk = f"<h2>Software commands compared</h2><ul><li><strong>{e(A['name'])}:</strong> <code>{e(a[1])} name</code></li><li><strong>{e(B['name'])}:</strong> <code>{e(b[1])} name</code></li></ul>"
+    an, bn = A["name"], B["name"]
+    both = "Yes. Install each one on its own partition, or try both from a live USB drive first. See <a href=\"guide-how-to-dual-boot-linux-and-windows.html\">dual booting</a> for the idea, which also works between two Linux systems."
+    pick = ("Neither is better for everyone. Choose by what you need: " + f"{e(an)} suits {e(A['aud'])}, while {e(bn)} suits {e(B['aud'])}.")
+    return blk + faq([(f"Which is better, {an} or {bn}?", pick), (f"Can I install both {an} and {bn}?", both), (f"Which gets updates faster, {an} or {bn}?", f"{e(an)} uses {e(REL[A['rel']])}; {e(bn)} uses {e(REL[B['rel']])}.")])
+
+SUDO = {"chown": "Usually yes, because only an administrator can give files to another user.", "mount": "Usually yes, for manual mounting.", "umount": "Usually yes, for manual unmounting.", "dd": "Yes when writing to a device, because it needs administrator rights.", "sudo": "It is the command that gives you those rights."}
+def cmd_faq(c):
+    return faq([(f"How do I see every option for {c}?", f"Run <code>man {e(c)}</code> for the full manual, or try <code>{e(c)} --help</code> for a short summary."),
+                (f"Do I need sudo to run {c}?", SUDO.get(c, "Not for your own files. You only need sudo when the command changes something owned by the system or another user.")),
+                (f"Is it safe to practise {c} on a live USB drive?", "Mostly yes, because a live session starts fresh each time. Be careful with commands that write to your internal disk, such as rm on a mounted drive or dd.")])
+
+def use_faq(what):
+    return faq([("Can I try these before installing?", "Yes. Write one to a USB drive and start it in live mode. See <a href=\"guide-how-to-try-linux-without-installing.html\">how to try Linux without installing</a>."),
+                (f"How many should I test for {what}?", "Two or three is plenty. Use each for about twenty minutes and check Wi-Fi, sound, battery and the programs you rely on."),
+                ("Will my files be touched while I test?", "No. A live session leaves your internal disk alone unless you choose to install.")])
+
 def more(plink, seen):
     global _plink
     _plink = plink
     out, used = [], set(seen)
-    def add(slug, title, desc, body):
+    def add(slug, title, desc, body, kind):
         if slug in used: return
-        used.add(slug); out.append((slug, title, trim(desc, 158), body))
+        used.add(slug); KIND[slug] = kind; out.append((slug, title, trim(desc, 158), body))
     pairs, sp = [], set()
     for p in PAIRS:
         if p[0] in D and p[1] in D and p[0] != p[1] and frozenset(p) not in sp: sp.add(frozenset(p)); pairs.append(p)
     for d in D.values():
         n = d["name"]; t = f"What is {n}? Who it is for"
-        add(f"what-is-{d['slug']}", t if len(t) <= 48 else f"What is {n}?", f"What {n} is, what it is built on, which desktop and tools it uses, who it suits and what to consider before you try it from a USB drive.", profile(d, pairs))
+        add(f"what-is-{d['slug']}", t if len(t) <= 48 else f"What is {n}?", f"What {n} is, what it is built on, which desktop and tools it uses, who it suits and what to consider before you try it from a USB drive.", profile(d, pairs) + pkgblock(d) + profile_faq(d), "distros")
     for d in D.values():
         n = d["name"]; t = f"How to install {n} from a USB drive"
-        add(inst_slug(d), t if len(t) <= 48 else f"Install {n} from USB", f"Step-by-step help to install {n} from a bootable USB drive: before you begin, install steps, updating afterwards and fixes if it will not start.", install(d))
+        add(inst_slug(d), t if len(t) <= 48 else f"Install {n} from USB", f"Step-by-step help to install {n} from a bootable USB drive: before you begin, install steps, updating afterwards and fixes if it will not start.", install(d) + pkgblock(d) + install_faq(d), "install")
     for a, b in pairs:
         t = f"{D[a]['name']} vs {D[b]['name']}: how they differ"
-        add(f"{a}-vs-{b}", t if len(t) <= 48 else f"{D[a]['name']} vs {D[b]['name']}", f"{D[a]['name']} vs {D[b]['name']} side by side: foundation, desktop, software tools, updates and memory needs, plus who should choose each.", compare(a, b))
+        add(f"{a}-vs-{b}", t if len(t) <= 48 else f"{D[a]['name']} vs {D[b]['name']}", f"{D[a]['name']} vs {D[b]['name']} side by side: foundation, desktop, software tools, updates and memory needs, plus who should choose each.", compare(a, b) + compare_extra(D[a], D[b]), "compare")
     for u in USE:
         body, title, desc = usecase(u)
-        add(f"best-linux-for-{u[0]}", title if len(title) <= 48 else title[:48].rsplit(" ", 1)[0], desc, body)
+        add(f"best-linux-for-{u[0]}", title if len(title) <= 48 else title[:48].rsplit(" ", 1)[0], desc, body + use_faq(u[1]), "best")
     for row in CMDS.split("\n"):
         c = row.split("|")[0]
-        add(f"linux-{c}-command", f"The {c} command in Linux explained", f"What the {c} command does in Linux, its syntax, practical examples and a tip, written in plain English for people using a live USB drive.", command(row))
+        add(f"linux-{c}-command", f"The {c} command in Linux explained", f"What the {c} command does in Linux, its syntax, practical examples and a tip, written in plain English for people using a live USB drive.", command(row) + cmd_faq(c), "commands")
     for row in TERMS.split("\n"):
         f = row.split("|")
-        add(f[0], f[1], f"{f[1]} A plain-English explanation and why it matters when you create or use a bootable USB drive.", term(row))
+        add(f[0], f[1], f"{f[1]} A plain-English explanation and why it matters when you create or use a bootable USB drive.", term(row), "concepts")
     return out

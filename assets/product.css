@@ -320,3 +320,33 @@ main:focus { outline: none; }
 .footer-pay { margin-top: 16px; } .site-footer .copy { font-size: 13px; margin-top: 10px; }
 .details details[open] summary { color: var(--accent); }
 .btn { box-shadow: 0 2px 0 rgba(0,0,0,.15); }
+
+/* ---- Footer base bar: payment icons and copyright now sit inside the page width ---- */
+.site-footer__base { max-width: 1280px; margin: 0 auto; padding: 20px 20px 28px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+.site-footer__base .footer-pay, .site-footer__base .pay-row { margin: 0; }
+.site-footer__base .copy { margin: 0; flex: 1 1 320px; text-align: right; }
+.site-footer li a { padding: 8px 0; }
+@media (max-width: 700px) {
+  .site-footer__cols { padding: 28px 16px; gap: 20px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .site-footer__cols > div:last-child { grid-column: 1 / -1; }
+  .site-footer__base { flex-direction: column; align-items: flex-start; padding: 20px 16px 28px; }
+  .site-footer__base .copy { text-align: left; flex-basis: auto; }
+}
+/* ---- Guide search and filters ---- */
+.gsearch { margin: 16px 0 24px; }
+.gsearch input { width: 100%; box-sizing: border-box; padding: 14px 16px; font: inherit; font-size: 16px; border: 2px solid var(--border); border-radius: 12px; background: #fff; color: var(--text); }
+.gsearch input:focus { outline: none; border-color: #335FFF; box-shadow: 0 0 0 3px rgba(51, 95, 255, .2); }
+.gcount { margin: 8px 2px 10px; font-size: 14px; color: var(--muted); }
+.gchips { display: flex; flex-wrap: wrap; gap: 8px; }
+.gchip { font: inherit; font-size: 14px; padding: 8px 14px; min-height: 40px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--text); cursor: pointer; }
+.gchip:hover { border-color: #335FFF; }
+.gchip[aria-pressed="true"] { background: #335FFF; border-color: #335FFF; color: #fff; }
+.card-grid li[hidden], .gnone[hidden] { display: none; }
+/* ---- Guide pages: FAQ, code blocks, small-screen safety ---- */
+.faq { margin-top: 32px; padding-top: 8px; border-top: 1px solid var(--border); }
+.faq-item { margin: 0 0 16px; } .faq-q { margin: 0 0 4px; font-size: 17px; } .faq-a { margin: 0; }
+.prose pre { overflow-x: auto; background: #f4f6ff; border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 15px; line-height: 1.5; -webkit-overflow-scrolling: touch; }
+.prose code { font-size: .95em; overflow-wrap: anywhere; } .prose pre code { overflow-wrap: normal; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+:focus-visible { outline: 3px solid #335FFF; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

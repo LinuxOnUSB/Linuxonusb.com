@@ -45,7 +45,9 @@
     var ps = data.p.map(function (e) { return [score(e, ws), e]; }).filter(function (x) { return x[0]; }).sort(function (a, b) { return b[0] - a[0]; }).slice(0, 7);
     if (cs.length) { box.appendChild(el("div", "sg-h", "Browse")); cs.forEach(function (x) { box.appendChild(link(x[1].u, x[1].t)); }); }
     if (ps.length) { box.appendChild(el("div", "sg-h", "Products")); ps.forEach(function (x) { box.appendChild(link(x[1].i + ".html", x[1].t, x[1].p || "", x[1].m)); }); }
-    if (!cs.length && !ps.length) box.appendChild(el("div", "sg-h", "No quick matches. Try fewer words."));
+    var gs = (data.g || []).map(function (e) { return [score(e, ws), e]; }).filter(function (x) { return x[0]; }).sort(function (a, b) { return b[0] - a[0]; }).slice(0, 4);
+    if (gs.length) { box.appendChild(el("div", "sg-h", "Guides")); gs.forEach(function (x) { box.appendChild(link(x[1].u, x[1].t)); }); }
+    if (!cs.length && !ps.length && !gs.length) box.appendChild(el("div", "sg-h", "No quick matches. Try fewer words."));
     var all = link("shop.html?q=" + encodeURIComponent(input.value.trim()), "See all results for \u201c" + input.value.trim() + "\u201d"); all.className = "sg-all"; box.appendChild(all);
     open();
   }
