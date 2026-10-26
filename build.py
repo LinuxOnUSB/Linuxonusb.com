@@ -169,7 +169,7 @@ def header():
             f'<a href="{STORE}" target="_blank" rel="noopener noreferrer">Our eBay store</a><label class="visually-hidden" for="lang">Translate this page</label><select id="lang" class="lang">{opts}</select></span></div></div>'
             '<header class="site-header"><div class="site-header__inner"><a class="site-name" href="index.html" aria-label="Linuxonusb.com home">linuxonusb<span>.com</span></a>'
             '<form class="site-search" action="shop.html" role="search"><input name="q" type="search" placeholder="Search all products" aria-label="Search all products"><button type="submit">Search</button></form></div>'
-            f'<nav class="site-nav" aria-label="Main"><a href="shop.html">All products</a>{nav}<a href="guides.html">Guides</a><a href="faq.html">FAQ</a></nav></header>')
+            f'<nav class="site-nav" aria-label="Main"><a href="shop.html">All products</a>{nav}<a href="guides.html">Guides</a><a href="games.html">Games</a><a href="faq.html">FAQ</a></nav></header>')
 
 GUIDE_JS = """(function(){var q=document.getElementById("gq"),li=[].slice.call(document.querySelectorAll("#glist li")),ch=[].slice.call(document.querySelectorAll(".gchip")),c=document.getElementById("gcount"),no=document.getElementById("gnone"),f="all";
 function run(){var w=q.value.toLowerCase().split(/\\s+/).filter(Boolean),n=0;li.forEach(function(x){var ok=(f==="all"||x.getAttribute("data-k")===f)&&w.every(function(t){return x.getAttribute("data-s").indexOf(t)>-1});x.hidden=!ok;if(ok)n++});c.textContent=n+" of "+li.length+" guides";no.hidden=n>0}
@@ -186,7 +186,7 @@ def faq_from_html(body):
 def footer():
     cats = "".join(f'<li><a href="category-{s}.html">{esc(n)}</a></li>' for s, n, _, _ in CATS if s in ("linux", "tools", "apps", "sandisk", "installers", "bundles"))
     def ul(rows): return "".join(f'<li><a href="guide-{s}.html">{t}</a></li>' for s, t in rows)
-    gl = ul([("how-to-boot-from-usb", "How to boot from USB"), ("how-to-install-linux-from-usb", "Install Linux from USB"), ("best-linux-for-beginners", "Best Linux for beginners"), ("boot-menu-keys-by-brand", "Boot menu keys")]) + '<li><a href="guides.html">All guides</a></li>'
+    gl = ul([("how-to-boot-from-usb", "How to boot from USB"), ("how-to-install-linux-from-usb", "Install Linux from USB"), ("best-linux-for-beginners", "Best Linux for beginners"), ("boot-menu-keys-by-brand", "Boot menu keys")]) + '<li><a href="guides.html">All guides</a></li><li><a href="games.html">Play mini games</a></li>'
     learn = ul([("what-is-ubuntu", "What is Ubuntu?"), ("what-is-linux-mint", "What is Linux Mint?"), ("what-is-debian", "What is Debian?"), ("what-is-fedora", "What is Fedora?"), ("ubuntu-vs-linux-mint", "Ubuntu vs Linux Mint"), ("how-to-use-ventoy-multiboot-usb", "Multiboot with Ventoy")])
     year = str(__import__('datetime').date.today().year)
     return ('<footer class="site-footer"><nav class="site-footer__cols" aria-label="Footer">'
@@ -554,7 +554,7 @@ def main():
     DIST.mkdir(); shutil.copytree(ROOT / "assets", DIST / "assets"); shutil.copy(ROOT / "assets" / "favicon.ico", DIST / "favicon.ico")
     (DIST / "site.webmanifest").write_text(json.dumps({"name": site["name"], "short_name": "Linuxonusb", "start_url": "/", "display": "browser", "theme_color": "#335FFF", "background_color": "#ffffff", "icons": [{"src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png"}, {"src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png"}]}), encoding="utf-8")
     global ASSET_V
-    ASSET_V = hashlib.md5(b"".join((ROOT / "assets" / f).read_bytes() for f in ("product.css", "product.js"))).hexdigest()[:8]
+    ASSET_V = hashlib.md5(b"".join((ROOT / "assets" / f).read_bytes() for f in ("product.css", "product.js", "games.js"))).hexdigest()[:8]
     global ABS_BASE
     ABS_BASE = (site.get("baseUrl") or "").rstrip("/")
     (ROOT / "img_local").mkdir(exist_ok=True)
@@ -620,6 +620,15 @@ def main():
     gjson = jsonld({"@context": "https://schema.org", "@type": "CollectionPage", "name": "Guides: bootable USB drives and Linux", "url": f"{base}/guides.html", "mainEntity": {"@type": "ItemList", "itemListElement": [{"@type": "ListItem", "position": i + 1, "url": f"{base}/guide-{x[0]}.html", "name": x[1]} for i, x in enumerate(g)]}}) + crumb_ld(site, [("Home", ""), ("Guides", "guides.html")])
     (DIST / "guides.html").write_text(page(site, f"Linux and Bootable USB Guides | {site['name']}", f"{len(g)} plain-English guides: boot from USB, install Linux, dual boot, choose a distribution, boot menu keys, Clonezilla and more.", "guides.html", f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; Guides</nav><h1>Linux and bootable USB guides</h1><p>Plain-English help for trying, installing and fixing computers with a bootable USB drive.</p>{guide_ui}<ul class="card-grid" id="glist">{gl}</ul><p id="gnone" class="gnone" hidden>No guides match. Try fewer words or choose All.</p><script>{GUIDE_JS}</script>', gjson), encoding="utf-8")
     names.append("guides.html")
+    gbody_ = ('<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; Games</nav><h1>Linux mini games</h1>'
+              '<p>Short games for a quick break while you shop. They run in your browser, fit phones and laptops, need no sign-up and keep your best scores on your own device.</p>'
+              '<div id="games" class="games"><div class="gm-tabs" role="tablist" aria-label="Choose a game"></div><div id="gm-host" class="gm-host" role="tabpanel"></div></div>'
+              '<noscript><p>The games need JavaScript turned on.</p></noscript>'
+              '<h2>How to play</h2><ul><li><strong>Command Sprint:</strong> type real Linux commands against the clock. It is a gentle way to get used to the terminal before you try a live USB drive.</li><li><strong>Boot Memory:</strong> flip cards to match distribution and boot terms in as few moves as you can.</li><li><strong>USB Catch:</strong> steer the penguin to catch falling USB drives and dodge the bugs. Drag or tap on a phone, use the arrow keys on a laptop.</li></ul>'
+              '<p class="gm-cta"><a class="btn" href="shop.html">Back to shopping</a> <a class="btn btn--ghost" href="guides.html">Read the guides</a></p>'
+              f'<script src="assets/games.js?v={ASSET_V}" defer></script>')
+    (DIST / "games.html").write_text(page(site, f"Linux Mini Games to Play While You Shop | {site['name']}", "Play quick Linux mini games in your browser: Command Sprint, Boot Memory and USB Catch. Made for phones and laptops, with no sign-up.", "games.html", gbody_, crumb_ld(site, [("Home", ""), ("Games", "games.html")])), encoding="utf-8")
+    names.append("games.html")
     # boot-menu pages per brand
     for slug_, bname, bkey, skey, note in BRANDS:
         fn = f"boot-from-usb-{slug_}.html"; ttl = f"How to boot from USB on {bname}"
@@ -673,7 +682,7 @@ def main():
             try: e["p"] = pf(q)
             except Exception: pass
         pidx.append(e)
-    cidx = [{"u": f"category-{c[0]}.html", "t": c[1], "k": SYN.get(c[0], "")} for c in CATS if by_cat.get(c[0])] + [{"u": f_, "t": f"{n_} USB drives", "k": n_.lower()} for f_, n_, _ in hub_pages] + [{"u": "guides.html", "t": "Guides and how-tos", "k": "guide help how boot install"}]
+    cidx = [{"u": f"category-{c[0]}.html", "t": c[1], "k": SYN.get(c[0], "")} for c in CATS if by_cat.get(c[0])] + [{"u": f_, "t": f"{n_} USB drives", "k": n_.lower()} for f_, n_, _ in hub_pages] + [{"u": "guides.html", "t": "Guides and how-tos", "k": "guide help how boot install"}, {"u": "games.html", "t": "Linux mini games", "k": "games play fun puzzle typing memory break"}]
     (DIST / "assets" / "search.json").write_text(json.dumps({"p": pidx, "c": cidx, "g": [{"u": f"guide-{x[0]}.html", "t": x[1]} for x in g]}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print("hubs", len(hub_pages), "boot pages", len(BRANDS), "price fn", pf.__name__ if pf else None)
     # home page
