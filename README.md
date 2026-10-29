@@ -45,6 +45,3 @@ On eBay, select the option on the listing and copy the address bar: variation li
 ## Limits
 - Prices are typed into the catalogue. Nothing syncs with eBay. Live prices/stock would need the eBay API plus a server, which static hosting cannot do.
 - Build checks cover structure and URLs, not whether a listing or image still exists on eBay.
-
-## Multilingual builds and automatic deployment
-`python3 build.py` builds English into `dist/`. `python3 i18n_build.py build --out _site` turns that into language editions, and `python3 i18n_validate.py _site` checks them. GitHub Actions does all of this on every relevant push; see **GITHUB_DEPLOYMENT_SETUP.md** for the one-time setup. Translations live in `i18n/` (`languages.json`, `ui/<code>.json`, `pages/<code>/<page>.json`).
