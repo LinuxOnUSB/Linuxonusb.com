@@ -10,7 +10,7 @@
    "subdomain": "es",
    "dir": "ltr",
    "enabled": true,
-   "mode": "subdomain"
+   "mode": "subdirectory"
   },
   {
    "code": "fr",
