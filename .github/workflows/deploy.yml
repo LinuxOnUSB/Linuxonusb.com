@@ -1,22 +1,205 @@
-name: Build and deploy
+name: Build, validate and deploy
+
+# Runs when site source files change (not for README-only edits), on pull requests (build + validate only, never deploys),
+# and on demand from the Actions tab.
 on:
   push:
     branches: [main]
+    paths:
+      - "*.py"
+      - "catalog/**"
+      - "template/**"
+      - "assets/**"
+      - "img_local/**"
+      - "i18n/**"
+      - "tests/**"
+      - ".github/workflows/deploy.yml"
+  pull_request:
+    paths:
+      - "*.py"
+      - "catalog/**"
+      - "template/**"
+      - "assets/**"
+      - "img_local/**"
+      - "i18n/**"
+      - "tests/**"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
+
+# Least privilege by default. Jobs that need more ask for it themselves.
 permissions:
   contents: read
-  pages: write
-  id-token: write
+
+# One deployment at a time. A newer push waits (and replaces any older waiting run) rather than cancelling a deploy half-way.
+concurrency:
+  group: deploy-${{ github.event_name == 'pull_request' && github.ref || 'site' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  deploy:
+  build:
+    name: Build and validate
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
+    timeout-minutes: 20
+    outputs:
+      stale_total: ${{ steps.langs.outputs.stale_total }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      has_langs: ${{ steps.matrix.outputs.has_langs }}
     steps:
       - uses: actions/checkout@v4
-      - run: python3 build.py
+
+      - name: 1. Build the English website
+        run: python3 build.py
+
+      - name: 2. Build language editions (pages, canonicals, hreflang, sitemaps)
+        id: langs
+        env:
+          VARS_JSON: ${{ toJSON(vars) }}
+        run: python3 i18n_build.py build --out _site
+
+      - name: 3. Validate (a failure here stops every deployment)
+        run: python3 i18n_validate.py _site
+
+      - name: 4. Self-tests (pull requests and manual runs)
+        if: github.event_name != 'push'
+        run: python3 -m unittest tests/test_i18n.py
+
+      - name: Work out which language repositories to deploy to
+        id: matrix
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          d = json.load(open("_site/manifest.json"))["deploy"]
+          print("matrix=" + json.dumps({"include": d}))
+          print("has_langs=" + ("true" if d else "false"))
+          PY
+
+      - name: Remove files that must never be published
+        run: find _site -name '__pycache__' -o -name '*.py' -o -name '.env' | xargs -r rm -rf
+
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+      - name: Package main site (English + any /<code>/ language folders)
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
-      - uses: actions/deploy-pages@v4
+          path: _site/en
+      - name: Package subdomain language sites
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-langs
+          path: _site/langs
+          retention-days: 1
+          if-no-files-found: ignore
+          include-hidden-files: true
+      - name: Package translation report
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: i18n-report
+          path: _site/i18n-report.md
+          retention-days: 7
+
+  deploy-english:
+    name: Deploy main site (English + subdirectory languages)
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  deploy-languages:
+    name: Deploy ${{ matrix.code }} to ${{ matrix.host }}
+    needs: build
+    if: github.event_name != 'pull_request' && needs.build.outputs.has_langs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.build.outputs.matrix) }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site-langs
+          path: site-langs
+      - name: Push ${{ matrix.code }} to its Pages repository
+        env:
+          TOKEN: ${{ secrets.LANG_DEPLOY_TOKEN }}
+          TARGET_REPO: ${{ vars[matrix.var] }}
+          BRANCH: ${{ vars.TARGET_BRANCH || 'main' }}
+          CODE: ${{ matrix.code }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TOKEN:-}" ]; then echo "::error::Secret LANG_DEPLOY_TOKEN is not set (Settings > Secrets and variables > Actions)."; exit 1; fi
+          case "$TARGET_REPO" in */*) ;; *) echo "::error::Variable ${{ matrix.var }} must look like owner/repository, but is '$TARGET_REPO'."; exit 1;; esac
+          [ -d "site-langs/$CODE" ] || { echo "::error::Build output for $CODE is missing."; exit 1; }
+          echo "::add-mask::$TOKEN"
+          AUTH="$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"; echo "::add-mask::$AUTH"
+          GIT_AUTH=(-c "http.extraheader=AUTHORIZATION: basic $AUTH")
+          URL="https://github.com/$TARGET_REPO.git"
+          git init -q target && cd target && git remote add origin "$URL"
+          if git "${GIT_AUTH[@]}" fetch -q --depth 1 origin "$BRANCH" 2>fetch.err; then git checkout -q -B "$BRANCH" FETCH_HEAD
+          elif grep -qiE "couldn't find remote ref|empty" fetch.err; then git checkout -q -B "$BRANCH"
+          else echo "::error::Cannot read $TARGET_REPO. Check the repository name and that the token has access to it."; cat fetch.err; exit 1; fi
+          rm -f fetch.err
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a "../site-langs/$CODE/." ./
+          git add -A
+          if git diff --cached --quiet; then echo "No changes for $CODE; nothing to deploy."; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Deploy $CODE from ${GITHUB_REPOSITORY}@${GITHUB_SHA::7}"
+          git "${GIT_AUTH[@]}" push -q origin "HEAD:$BRANCH"
+          echo "Deployed $CODE to $TARGET_REPO ($BRANCH)." >> "$GITHUB_STEP_SUMMARY"
+
+  flag-stale-translations:
+    name: Flag translations that need review
+    needs: build
+    if: github.event_name != 'pull_request' && needs.build.outputs.stale_total != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: i18n-report
+      - name: Open or update the review issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          TITLE="Translations need review (English source changed)"
+          N="$(gh issue list --repo "$REPO" --state open --search "\"$TITLE\" in:title" --json number -q '.[0].number' || true)"
+          if [ -n "$N" ]; then gh issue edit "$N" --repo "$REPO" --body-file i18n-report.md; else gh issue create --repo "$REPO" --title "$TITLE" --body-file i18n-report.md; fi
+
+  report-failure:
+    name: Report failure
+    needs: [build, deploy-english, deploy-languages]
+    if: ${{ always() && github.event_name != 'pull_request' && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update a failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RESULTS: build=${{ needs.build.result }}, english=${{ needs.deploy-english.result }}, languages=${{ needs.deploy-languages.result }}
+        run: |
+          TITLE="Website deployment failed"
+          BODY="The latest deployment did not complete. ($RESULTS)
+
+          Details and the exact error: $RUN
+
+          If the build or validation step failed, nothing was deployed and the live websites are unchanged. See the Troubleshooting section of GITHUB_DEPLOYMENT_SETUP.md."
+          N="$(gh issue list --repo "$REPO" --state open --search "\"$TITLE\" in:title" --json number -q '.[0].number' || true)"
+          if [ -n "$N" ]; then gh issue comment "$N" --repo "$REPO" --body "$BODY"; else gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY"; fi
